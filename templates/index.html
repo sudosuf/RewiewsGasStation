@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Левая часть с плитками - занимает 2/3 экрана */
+        .main-content {
+            flex: 2;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+
+        .tile-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            overflow-y: auto;
+            border: 0px solid #000;
+            border-radius: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+
+        .tile {
+            background: #fff;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            text-align: center;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+            height: min-content;
+        }
+
+        .tile:hover {
+            transform: scale(1.05);
+        }
+
+        .tile.animating {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            transform: translate(-50%, -50%) rotateY(180deg);
+            transition: transform 0.8s ease;
+            z-index: 1000;
+        }
+
+        .tile-title {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            border: 8px solid;
+        }
+        .circle.green { border-color: #4CAF50; }
+        .circle.yellow { border-color: #FFC107; }
+        .circle.red { border-color: #F44336; }
+
+        /* Правая часть с новостями - занимает 1/3 экрана */
+        .sidebar {
+            flex: 1;
+            border-left: 2px solid #000;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            background: #f5f5f5;
+        }
+
+        .sidebar-title {
+            font-size: 24px;
+            font-weight: bold;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .news-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .news-item {
+            background-color: #fff;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .news-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .news-date {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .news-description {
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Левая колонка с логотипом и плитками -->
+        <div class="main-content">
+            <div class="logo">Logo</div>
+            <div class="tile-container" id="tileContainer">
+                <!-- Плитки будут добавляться сюда динамически через JavaScript -->
+            </div>
+        </div>
+
+        <!-- Правая колонка с заголовком и новостями -->
+        <div class="sidebar">
+            <div class="sidebar-title">Dashboard</div>
+            <div class="news-container" id="newsContainer">
+                <!-- Новости будут добавляться сюда динамически через JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tilesPerLoad = 15;
+        let currentOffset = 0;
+
+        async function fetchData(url) {
+            const response = await fetch(url);
+            return response.json();
+        }
+
+        // Инициализация плиток
+        async function initializeTiles() {
+            const data = await fetchData('http://127.0.0.1:5000/api/tiles');
+            createTiles(data.flat(), currentOffset, tilesPerLoad);
+            currentOffset += tilesPerLoad;
+        }
+
+        function createTiles(data, startIndex, count) {
+            const container = document.getElementById('tileContainer');
+            for (let i = startIndex; i < startIndex + count && i < data.length; i++) {
+                const item = data[i];
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+
+                const title = document.createElement('div');
+                title.classList.add('tile-title');
+                title.textContent = item.geolocation;
+
+                const circle = document.createElement('div');
+                circle.classList.add('circle');
+                circle.textContent = item['medial-mark'];
+                circle.classList.add(getCircleColor(item['medial-mark']));
+
+                tile.appendChild(title);
+                tile.appendChild(circle);
+                tile.addEventListener('click', () => {
+                    tile.classList.add('animating');
+                    localStorage.setItem('selectedTileData', JSON.stringify(item));
+                    setTimeout(() => {
+                        window.location.href = 'templates/detail.html';
+                    }, 800);
+                });
+
+                container.appendChild(tile);
+            }
+        }
+
+        function getCircleColor(rating) {
+            if (parseFloat(rating.replace(",", ".")) > 4.3) return 'green';
+            if (parseFloat(rating.replace(",", ".")) < "4.0") {return 'red'}
+            else {return 'yellow'};
+        }
+
+        function loadMoreTiles() {
+            const data = JSON.parse(localStorage.getItem('tileData')).flat();
+            if (data && currentOffset < data.length) {
+                createTiles(data, currentOffset, tilesPerLoad);
+                currentOffset += tilesPerLoad;
+            }
+        }
+
+        // Загрузка новостей
+        async function loadNews() {
+            const newsData = await fetchData('http://127.0.0.1:5000/api/news');
+            console.log(newsData);
+
+             if (Array.isArray(newsData[0])) {
+                newsData = newsData.flat();
+            }
+
+            const newsContainer = document.getElementById('newsContainer');
+
+            newsData.forEach(item => {
+                // Проверка, что news существует в объекте
+                if (item.news) {
+                    const newsDiv = document.createElement('div');
+                    newsDiv.classList.add('news-item');
+
+                    const date = document.createElement('div');
+                    date.classList.add('news-date');
+                    date.textContent = item.news.data;
+
+                    const title = document.createElement('div');
+                    title.classList.add('news-title');
+                    title.textContent = item.news.title;
+
+                    const description = document.createElement('div');
+                    description.classList.add('news-description');
+                    description.textContent = item.news.description;
+
+                    newsDiv.appendChild(date);
+                    newsDiv.appendChild(title);
+                    newsDiv.appendChild(description);
+                    newsContainer.appendChild(newsDiv);
+                } else {
+                    console.error("Invalid news item structure:", item);
+                }
+            });
+        }
+
+        window.addEventListener('scroll', () => {
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+                loadMoreTiles();
+            }
+        });
+
+        window.onpageshow = function(event) {
+            if (event.persisted) window.location.reload();
+        };
+
+        initializeTiles();
+        loadNews();
+    </script>
+</body>
+</html>
