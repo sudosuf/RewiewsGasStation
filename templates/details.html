@@ -24,6 +24,7 @@
             border: 2px solid #ccc;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-height: 90vh;
         }
         .left-section, .right-section {
             border: 1px solid #000;
@@ -31,16 +32,23 @@
             padding: 10px;
             box-sizing: border-box;
         }
-        .map, .description {
+        .text-geolocation, .medial-mark, .description {
+            margin-bottom: 15px;
+        }
+        .text-geolocation {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .medial-mark {
+            font-style: italic;
+            color: #555;
+        }
+        .description {
             border: 1px solid #ccc;
             border-radius: 10px;
             padding: 10px;
-            margin-bottom: 10px;
-            height: 200px;
+            height: 60vh;
             overflow-y: scroll;
-        }
-        .map {
-            height: 300px;
         }
         .chat {
             display: flex;
@@ -48,12 +56,13 @@
             height: 100%;
         }
         .chat-history {
-            flex: 1;
+                flex: 1;
             border: 1px solid #ccc;
             border-radius: 10px;
             padding: 10px;
             overflow-y: auto;
             margin-bottom: 10px;
+            max-height: 58vh;
         }
         .message {
             margin-bottom: 10px;
@@ -96,32 +105,33 @@
             background-color: #4CAF50;
             color: white;
         }
-        .map-image {
-            width: 100%;
-            height: auto;
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .input-area {
+                order: 3;
+                margin-top: 10px;
+            }
         }
     </style>
-    <!-- Добавьте ссылку на Google Maps API с вашим API-ключом -->
-
 </head>
 <body>
     <div class="container">
-        <!-- Левая часть: Карта и Описание -->
+        <!-- Left section: Map and Description -->
         <div class="left-section">
-           <dev class="text-geolocation" id="detailTitle"></dev>
+            <div class="text-geolocation" id="detailTitle"></div>
+            <div class="medial-mark" id="medialMark"></div>
             <div class="description">
-                <strong>Descriptions:</strong>
+                <strong>Отзыв:</strong>
                 <div id="descriptions"></div>
             </div>
         </div>
 
-        <!-- Правая часть: Чат -->
+        <!-- Right section: Chat -->
         <div class="right-section chat">
             <div class="chat-history" id="chatHistory">
-                <!-- Сообщения чата будут добавляться сюда динамически -->
+                <!-- Chat messages will be dynamically added here -->
             </div>
             <div class="input-area">
                 <textarea id="userInput" placeholder="Enter your message..."></textarea>
@@ -132,63 +142,53 @@
 
     <script>
     const selectedTileData = JSON.parse(localStorage.getItem('selectedTileData'));
-    console.log(selectedTileData['geolocation'])
+    console.log(selectedTileData['geolocation']);
 
     if (selectedTileData) {
-        // Отображение заголовка и описания
-        document.getElementById('detailTitle').textContent = selectedTileData['geolocation'];
+        // Displaying geolocation, medial mark, and descriptions
+        document.getElementById('detailTitle').textContent = "Геолокация: " + selectedTileData['geolocation'].replace("d", " ");
+        document.getElementById('medialMark').textContent = "Средняя оценка: " + selectedTileData['medial-mark'] || 'No medial mark data available.';
         document.getElementById('descriptions').textContent = selectedTileData['sammary-review'];
-        console.log("good")
-
-
-
     } else {
-        document.getElementById('detailTitle').textContent = 'Данные не найдены';
+        document.getElementById('detailTitle').textContent = 'Data not found';
     }
 
+    // Send message to chat
+    async function sendMessage() {
+        const userInput = document.getElementById("userInput").value.trim();
+        if (userInput === "") return;
 
-    // Отправка сообщения в чат
-        async function sendMessage() {
-            const userInput = document.getElementById("userInput").value.trim();
-            if (userInput === "") return;
+        // Display user's message
+        appendMessage(userInput, "user-message");
+        document.getElementById("userInput").value = "";
 
-            // Отображаем сообщение пользователя
-            appendMessage(userInput, "user-message");
-            document.getElementById("userInput").value = "";
+        try {
+            const response = await fetch("http://192.168.1.9:5000/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userInput }),
+            });
+            const data = await response.json();
 
-            try {
-                // Запрос на сервер с сообщением пользователя
-                const response = await fetch("http://127.0.0.1:5000/api/chat", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ message: userInput }),
-                });
-                const data = await response.json();
-
-                // Отображение ответа от бота
-                appendMessage(data.reply, "bot-message");
-            } catch (error) {
-                console.error("Error:", error);
-                appendMessage("Server error. Please try again later.", "bot-message");
-            }
+            // Display bot's response
+            appendMessage(data.reply, "bot-message");
+        } catch (error) {
+            console.error("Error:", error);
+            appendMessage("Server error. Please try again later.", "bot-message");
         }
+    }
 
-        // Добавление сообщения в историю чата
-        function appendMessage(text, className) {
-            const chatHistory = document.getElementById("chatHistory");
-            const messageDiv = document.createElement("div");
-            messageDiv.className = "message " + className;
-            messageDiv.textContent = text;
-            chatHistory.appendChild(messageDiv);
+    // Append message to chat history
+    function appendMessage(text, className) {
+        const chatHistory = document.getElementById("chatHistory");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = "message " + className;
+        messageDiv.textContent = text;
+        chatHistory.appendChild(messageDiv);
 
-            // Автопрокрутка вниз
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        }
-
-
+        // Scroll to the bottom
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
     </script>
 </body>
 </html>
-

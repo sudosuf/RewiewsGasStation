@@ -88,6 +88,10 @@ def home():
 def details():
     return render_template("details.html")
 
+@app.route('/templates/chat.html')
+def chat():
+    return render_template('chat.html')
+
 @app.route("/api/news", methods=["GET"])
 def send_news():
     results = []
@@ -110,6 +114,6 @@ def get_photo():
     return send_file(photo_path, mimetype='image/jpeg')
 # Запуск сервера
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="192.168.1.9", port=5000)
 
 
